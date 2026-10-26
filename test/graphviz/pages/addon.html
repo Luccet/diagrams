@@ -1,0 +1,75 @@
+<!doctype html><meta charset="utf-8"><script src="/luccet.js" data-use="/graphviz.js"></script>
+
+# Smoke: the graphviz add-on
+
+A graph with a cluster, a filled node and an id:
+
+```dot {#flow}
+digraph {
+  write [label="Write the note"];
+  parse [label="Does it parse?", shape=diamond];
+  subgraph cluster_review {
+    label="Review";
+    publish [label="Publish", shape=box, style=filled];
+  }
+  write -> parse;
+  parse -> publish [label="yes"];
+  parse -> fix [label="no"];
+  fix -> write;
+}
+```
+
+The colours a graph gives are its own, and the text on a light fill stays readable:
+
+```dot {#coloured}
+digraph {
+  a [style=filled, fillcolor=lightblue, label="light fill"];
+  b [color=red, fontcolor=blue, label="red and blue"];
+  a -> b [color=darkgreen];
+}
+```
+
+A listing, in the language `graphviz`:
+
+```graphviz [A listing]{#lst}
+graph { a -- b -- c }
+```
+
+Another engine, from the graph's own layout:
+
+```dot {#circle}
+graph { layout=circo; a -- b -- c -- d -- a }
+```
+
+The same graph twice:
+
+```dot
+digraph { x -> y }
+```
+
+```dot
+digraph { x -> y }
+```
+
+Links: one that would run script, one to a site:
+
+```dot {#links}
+digraph {
+  bad [URL="javascript:alert(1)", label="bad"];
+  sneaky [href=" java	script:alert(2)", label="sneaky"]; // a tab in the scheme, which browsers drop
+  good [URL="https://example.com/", label="good"];
+  local [URL="#flow", label="local"];
+}
+```
+
+A graph Graphviz cannot read keeps its source and its id:
+
+```dot {#broken}
+digraph { a -> }
+```
+
+Code that is not a graph:
+
+```js
+const x = 1;
+```

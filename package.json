@@ -1,0 +1,19 @@
+{
+  "name": "@luccet/diagrams",
+  "private": true,
+  "description": "Diagrams for Luccet notes: mermaid.js draws mermaid fences with Mermaid, and graphviz.js draws dot and graphviz fences with Graphviz, in the page theme's colours, in light, dark and print.",
+  "license": "MIT",
+  "repository": "github:Luccet/diagrams",
+  "files": [
+    "mermaid.js",
+    "graphviz.js"
+  ],
+  "scripts": {
+    "test": "npm run test:node && npm run test:browser",
+    "test:node": "node test/mermaid/node.js && node test/graphviz/node.js",
+    "test:browser": "node test/mermaid/browser.js && node test/graphviz/browser.js"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
+}
