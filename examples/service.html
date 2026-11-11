@@ -1,0 +1,157 @@
+<!doctype html><meta charset="utf-8">
+<script>
+  // This note's vocabulary: figures are numbered, so @fig-request reads "Figure 2".
+  window.LUCCET = {schema: {block: {figure: {tag: 'figure', counter: 'figure', label: 'Figure'}}}};
+</script>
+<script src="https://cdn.luccet.dev/v2/luccet.js" data-use="../mermaid.js https://cdn.luccet.dev/themes/v1/classic.css"></script>
+
+:::meta
+title: How the tide service works
+lang: en
+:::
+
+# How the tide service works
+
+> An example of the diagrams kit's [Mermaid add-on](https://github.com/Luccet/diagrams#mermaid):
+> six kinds of diagram (a flowchart, a sequence diagram, a state diagram, a git graph, a Gantt
+> chart and a pie chart), each in a numbered figure that the text refers to, and one with
+> settings of its own in its front matter. They take the
+> [classic theme's](https://github.com/Luccet/themes) colours: nodes filled with its soft background, the
+> sequence diagram's note in its mark colour, the critical tasks outlined in its error colour,
+> branches and slices in its accents; they are drawn again when the reader switches between
+> light and dark, and once more in print colours for paper. The note loads `../mermaid.js`, this
+> repository's copy.
+
+## The parts
+
+The service is three processes around one database (@fig-parts). The feed reads the gauges
+every 15 minutes; the model turns a station's readings into predictions once a night; the API
+answers from the cache, and from the database when the cache has nothing.
+
+:::figure[The tide service's processes and stores.]{#fig-parts}
+```mermaid
+flowchart LR
+  gauges[Tide gauges] -->|readings every 15 min| feed
+  subgraph service [tide service]
+    feed[Feed] --> db[(Postgres)]
+    model[Model, nightly] <-->|readings, predictions| db
+    api[API] --> db
+    api <--> cache[(Redis)]
+  end
+  apps[Apps and charts] -->|HTTPS| api
+```
+:::
+
+## A request
+
+@fig-request follows one request for two days of predictions at Leith. A miss costs one query;
+the next request within 15 minutes is a hit.
+
+:::figure[A request for predictions, on a cache miss and on a hit.]{#fig-request}
+```mermaid
+sequenceDiagram
+  participant App
+  participant API
+  participant Cache as Redis
+  participant DB as Postgres
+  App->>API: GET /stations/LEITH/predictions?days=2
+  API->>Cache: get predictions:LEITH:2
+  alt miss
+    Cache-->>API: nothing
+    API->>DB: select the next 48 hours
+    DB-->>API: 96 rows
+    API->>Cache: set, expires in 15 min
+  else hit
+    Cache-->>API: 96 rows
+  end
+  API-->>App: 200, JSON
+  Note over API,Cache: The model's nightly run clears the cache.
+```
+:::
+
+## A station's state
+
+A station whose gauge stops reporting is not dropped at once (@fig-station). While it is
+stale, the API still answers, with `"stale": true`; once it is offline, the API answers 503
+until a reading arrives.
+
+:::figure[A station's states, by the age of its last reading.]{#fig-station}
+```mermaid
+stateDiagram-v2
+  [*] --> Online
+  Online --> Stale: no reading for 30 min
+  Stale --> Online: a reading
+  Stale --> Offline: no reading for 6 h
+  Offline --> Online: a reading
+  Offline --> [*]: retired
+```
+:::
+
+## Branches
+
+Work happens on short branches merged into `main`; a release is a tag on `main`
+(@fig-branches). A fix to a release goes to `main` first, then is picked onto a
+`release-` branch cut from the tag.
+
+:::figure[The branches of release 1.5.]{#fig-branches}
+```mermaid
+---
+config:
+  gitGraph:
+    rotateCommitLabel: false
+---
+gitGraph
+  commit id: "1.4.2" tag: "v1.4.2"
+  branch datum
+  commit id: "add datum"
+  checkout main
+  branch stale
+  commit id: "stale flag"
+  checkout datum
+  commit id: "fill datums"
+  checkout main
+  merge datum
+  merge stale tag: "v1.5.0"
+  branch release-1.5
+  checkout main
+  commit id: "fix Leith"
+  checkout release-1.5
+  cherry-pick id: "fix Leith" tag: "v1.5.1"
+```
+:::
+
+## Release 1.5
+
+The critical path runs through the database (@fig-plan): the API's change needs the filled
+column, and the release waits for the API as well as for the feed.
+
+:::figure[The plan for release 1.5.]{#fig-plan}
+```mermaid
+gantt
+  dateFormat YYYY-MM-DD
+  axisFormat %d %b
+  section Database
+    Datum column        :done, crit, mig, 2026-10-05, 4d
+    Fill the datums     :active, crit, fill, after mig, 3d
+  section Feed
+    Stale flag          :done, stale, 2026-10-05, 5d
+  section API
+    Datum in responses  :crit, api, after fill, 4d
+  section Release
+    Tag 1.5.0           :milestone, after api stale, 0d
+```
+:::
+
+## Where the requests go
+
+Most requests are for predictions (@fig-requests), which is why they are the ones cached.
+
+:::figure[Requests in October, by endpoint.]{#fig-requests}
+```mermaid
+pie showData
+  "/predictions" : 712400
+  "/stations" : 184300
+  "/readings" : 92100
+  "/health" : 43200
+```
+:::
