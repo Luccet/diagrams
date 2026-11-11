@@ -10,8 +10,8 @@
   ],
   "scripts": {
     "test": "npm run test:node && npm run test:browser",
-    "test:node": "node test/mermaid/node.js && node test/graphviz/node.js",
-    "test:browser": "node test/mermaid/browser.js && node test/graphviz/browser.js"
+    "test:node": "node test/mermaid/node.js && node test/graphviz/node.js && node test/examples/node.js",
+    "test:browser": "node test/mermaid/browser.js && node test/graphviz/browser.js && node test/examples/browser.js"
   },
   "devDependencies": {
     "playwright": "1.61.1"

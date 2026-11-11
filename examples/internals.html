@@ -1,0 +1,124 @@
+<!doctype html><meta charset="utf-8">
+<script>
+  // This note's vocabulary: figures are numbered, so @fig-modules reads "Figure 1".
+  // And Graphviz's defaults for every graph in it: rounded boxes, unless a graph says otherwise.
+  window.LUCCET = {
+    schema: {block: {figure: {tag: 'figure', counter: 'figure', label: 'Figure'}}},
+    use: {graphviz: {node: {shape: 'box', style: 'rounded'}}},
+  };
+</script>
+<script src="https://cdn.luccet.dev/v2/luccet.js" data-use="../graphviz.js https://cdn.luccet.dev/themes/v1/classic.css"></script>
+
+:::meta
+title: Inside the tide service
+lang: en
+:::
+
+# Inside the tide service
+
+> An example of the diagrams kit's [Graphviz add-on](https://github.com/Luccet/diagrams#graphviz):
+> three graphs in numbered figures that the text refers to: the modules, in clusters, laid out
+> by `dot`; the tables, in HTML-like labels and a font of their own, Courier; and the gauges,
+> laid out by `neato`. The head script sets Graphviz's defaults for every graph, rounded boxes.
+> What a graph does not colour takes the [classic theme's](https://github.com/Luccet/themes)
+> colours, in light and dark alike; what it colours keeps its own, with the text on a fill in
+> whichever of the theme's text and background colours reads on it. Two of the modules are
+> links to the sections below. The note loads `../graphviz.js`, this repository's copy.
+
+## Modules
+
+The service is three programs, `feed`, `model` and `api`, over a shared `lib` (@fig-modules).
+Packages from npm are shaded; the modules release 1.5 changed are yellow. The dashed
+edge is the one to remove: `api` should read predictions from the database, not compute them.
+Click `db` or `stations` for their part of this note.
+
+:::figure[The modules, and what each one imports.]{#fig-modules}
+```dot
+digraph {
+  subgraph cluster_feed { label="feed"; poll; parse }
+  subgraph cluster_model { label="model"; fit; harmonics }
+  subgraph cluster_api { label="api"; routes; cache }
+  subgraph cluster_lib {
+    label="lib";
+    labelloc=b;
+    db [URL="#tables", tooltip="The tables"];
+    stations [URL="#gauges", tooltip="The gauges"];
+    units;
+  }
+  { rank=sink; node [style="rounded,filled"]; undici; fastify; ioredis; pg }
+  parse, db, routes [style="rounded,filled", fillcolor="#fde68a"];
+
+  poll -> parse -> db;
+  poll -> undici;
+  parse -> stations;
+  fit -> harmonics -> units;
+  fit -> db;
+  routes -> cache -> ioredis;
+  routes -> db;
+  routes -> stations;
+  routes -> fastify;
+  routes -> harmonics [style=dashed, color=crimson, fontcolor=crimson, label="remove in 1.6"];
+  db -> pg;
+}
+```
+:::
+
+## Tables {#tables}
+
+Three tables (@fig-tables). Every reading and every prediction belongs to a station, by its
+code; `datum_m`, new in 1.5, is the station's chart datum, which the API adds to each level.
+
+:::figure[The tables, and the keys between them.]{#fig-tables}
+```dot
+digraph {
+  rankdir=LR;
+  node [shape=plain, fontname="Courier"];
+  edge [arrowhead=crow];
+  stations [label=<<table border="0" cellborder="1" cellspacing="0" cellpadding="5">
+    <tr><td><b>stations</b></td></tr>
+    <tr><td port="code" align="left">code text</td></tr>
+    <tr><td align="left">name text</td></tr>
+    <tr><td align="left">datum_m numeric(5, 2)</td></tr>
+  </table>>];
+  readings [label=<<table border="0" cellborder="1" cellspacing="0" cellpadding="5">
+    <tr><td><b>readings</b></td></tr>
+    <tr><td port="station" align="left">station text</td></tr>
+    <tr><td align="left">at timestamptz</td></tr>
+    <tr><td align="left">level_m numeric(6, 3)</td></tr>
+  </table>>];
+  predictions [label=<<table border="0" cellborder="1" cellspacing="0" cellpadding="5">
+    <tr><td><b>predictions</b></td></tr>
+    <tr><td port="station" align="left">station text</td></tr>
+    <tr><td align="left">at timestamptz</td></tr>
+    <tr><td align="left">level_m numeric(6, 3)</td></tr>
+    <tr><td align="left">run date</td></tr>
+  </table>>];
+  stations:code -> readings:station;
+  stations:code -> predictions:station;
+}
+```
+:::
+
+## Gauges {#gauges}
+
+When a gauge misses readings, the feed fills the gap in its charts from a neighbour's,
+corrected by the difference in their predictions. @fig-gauges shows the pairs it may use, around
+the Firth of Forth: a line joins two gauges close enough to stand in for each other.
+
+:::figure[The gauges that may stand in for each other.]{#fig-gauges}
+```graphviz
+graph {
+  layout=neato;
+  overlap=false;
+  sep="+10";
+  node [shape=ellipse, style=""];
+  Grangemouth -- Rosyth;
+  Rosyth -- Burntisland;
+  Rosyth -- Leith;
+  Burntisland -- Leith;
+  Burntisland -- Kirkcaldy -- Methil -- Anstruther;
+  Leith -- Musselburgh -- "North Berwick" -- Dunbar;
+  Anstruther -- "North Berwick";
+}
+```
+:::

@@ -185,9 +185,20 @@ Each library's version and hash live in a table in its add-on, written by its to
 
 The tools need Node 18 or later, and the network once per version.
 
+## Examples
+
+Notes that use the add-ons, in [`examples/`](examples):
+
+| Example | What it shows |
+|---|---|
+| [`service.html`](examples/service.html) | `mermaid.js`: six kinds of diagram (a flowchart, a sequence diagram, a state diagram, a git graph, a Gantt chart and a pie chart), each in a numbered figure that the text refers to; one diagram's own settings in its front matter; nodes, a note, critical tasks, branches and slices in the theme's colours |
+| [`internals.html`](examples/internals.html) | `graphviz.js`: three graphs in numbered figures: modules in clusters, laid out by `dot`; tables in HTML-like labels and a font of their own; an undirected graph laid out by `neato`. Defaults for every graph from a head script; colours of the graph's own, with readable text on its fills; nodes that link to the note's sections |
+
+They load `../mermaid.js` or `../graphviz.js`, this repository's copy, so they show the add-ons as they are here, and the engine and the [classic theme](https://github.com/Luccet/themes) from cdn.luccet.dev. Open one in a browser from a clone (the engine, the theme and the library come over the network); `npm test` checks them.
+
 ## Tests
 
-`npm test` runs the kit's tests: `test/mermaid/` and `test/graphviz/`, each a `node.js` under Node, with the engine's command line, and a `browser.js` in Chromium and Firefox through [Playwright](https://playwright.dev). They run against a checkout of the engine, [Luccet/luccet](https://github.com/Luccet/luccet): `LUCCET_ROOT` names it, else `../luccet` beside this repository.
+`npm test` runs the kit's tests: `test/mermaid/`, `test/graphviz/` and `test/examples/`, each a `node.js` under Node, with the engine's command line, and a `browser.js` in Chromium and Firefox through [Playwright](https://playwright.dev). They run against a checkout of the engine, [Luccet/luccet](https://github.com/Luccet/luccet): `LUCCET_ROOT` names it, else `../luccet` beside this repository.
 
 ```sh
 npm install && npx playwright install chromium firefox
